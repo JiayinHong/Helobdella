@@ -202,7 +202,7 @@ str.gtvel = gaussianinterp(str.tt,str.tt(use),tvel(use),tau);
 if 0
     figure
     set(gcf,'position',[1000 897 997 441])
-    v = VideoWriter('0821trial1.avi');
+    v = VideoWriter(fullfile(save_dir,'0821trial1.avi'));
     v.FrameRate=5;
     open(v)
     tic

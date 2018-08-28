@@ -2,3 +2,4 @@
 *.avi
 *.png
 *.mat
+.DS_Store

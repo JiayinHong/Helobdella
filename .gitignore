@@ -3,3 +3,4 @@
 *.png
 *.mat
 .DS_Store
+sketch*.m

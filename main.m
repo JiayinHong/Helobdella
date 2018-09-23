@@ -1,28 +1,34 @@
 %% preprocess and store coordinates into a struct
 % drag the csv file to workspace and it will be stored as a table
 % change the name of the table to 'coords'
-if width(coords)>=13
-    coords(:,[4,7,10,13])=[];  % delete the probability columns
-    tableVariableNames = {'tstamp','headX','headY','neckX','neckY','midX','midY','tailX','tailY'};
-    coords.Properties.VariableNames = tableVariableNames;
-end
-
-clear str
 framerate_Hz = 10;
-filename = ['leech-',datestr(now,'mmmdd-yyyy'),'.mat'];     % maybe hard-coded
 
-str.headx = coords{:,'headX'};
-str.heady = coords{:,'headY'};
-str.neckx = coords{:,'neckX'};
-str.necky = coords{:,'neckY'};
-str.midx = coords{:,'midX'};
-str.midy = coords{:,'midY'};
-str.tailx = coords{:,'tailX'};
-str.taily = coords{:,'tailY'};
-
-N = height(coords);
-str.tt = [0:N-1]' / framerate_Hz;   % total time in seconds
-save(filename, 'str')
+if ~exist('str','var')
+    if width(coords)>=13
+        coords(:,[4,7,10,13])=[];  % delete the probability columns
+        tableVariableNames = {'tstamp','headX','headY','neckX','neckY','midX','midY','tailX','tailY'};
+        coords.Properties.VariableNames = tableVariableNames;
+    end
+    
+    clear str
+    filename = ['leech-',datestr(now,'mmmdd-yyyy'),'.mat'];     % maybe hard-coded
+    
+    str.headx = coords{:,'headX'};
+    str.heady = coords{:,'headY'};
+    str.neckx = coords{:,'neckX'};
+    str.necky = coords{:,'neckY'};
+    str.midx = coords{:,'midX'};
+    str.midy = coords{:,'midY'};
+    str.tailx = coords{:,'tailX'};
+    str.taily = coords{:,'tailY'};
+    
+    N = height(coords);
+    str.tt = [0:N-1]' / framerate_Hz;   % total time in seconds
+    save(filename, 'str')
+else
+    % the struct has been loaded, do nothing
+    N = length(str.tt);
+end
 
 %% load file0000 and plot head/tail trace
 save_dir = '../sampleFigures/0821trial1/';
@@ -110,7 +116,7 @@ for i=1:N
         % do nothing
     elseif mybinary(round(str.heady(i)),round(str.headx(i)))==0     % caution: y coords go first!
         roughHead=[roughHead;i];
-    end   
+    end
 end
 roughHead = roughHead/framerate_Hz;
 linkaxes
@@ -126,7 +132,7 @@ tailjump = sqrt([0; diff(tx).^2 + diff(ty).^2]);
 
 figure(2);clf
 set(gcf,'position',[111 569 1135 561])
-subplot(2,1,1) 
+subplot(2,1,1)
 plot(str.tt,tx,'k',str.tt,ty,'b','LineWidth',1.5)
 hold on
 WHATSBAD = 5;   % hard-code, adjust according to plot of tailjump
@@ -173,9 +179,9 @@ roughTail=[];   % record frame N.O while tail dot is on rough
 for i=1:N
     if isnan(str.tailx(i))
         % do nothing
-    elseif mybinary(round(str.taily(i)),round(str.tailx(i)))==0    % caution: y coords go first! 
+    elseif mybinary(round(str.taily(i)),round(str.tailx(i)))==0    % caution: y coords go first!
         roughTail=[roughTail;i];
-    end   
+    end
 end
 roughTail = roughTail/framerate_Hz;
 
@@ -271,7 +277,7 @@ glen(:,3) = gaussianinterp(str.tt,str.tt(use),tmp3(use),2);
 figure; set(gcf,'position',[1000 779 1256 559])
 subplot(3,1,1); plot(str.tt,glen(:,1),'LineWidth',1.5);  title('Section I length');  set(gca,'FontSize',fontsize,'xtick',0:120:720); xlim([0 721]); ylim([0 66])
 subplot(3,1,2); plot(str.tt,glen(:,2),'LineWidth',1.5);  title('Section II length'); set(gca,'FontSize',fontsize,'xtick',0:120:720); xlim([0 721]); ylim([0 66])
-subplot(3,1,3); plot(str.tt,glen(:,3),'LineWidth',1.5);  title('Section III length');set(gca,'FontSize',fontsize,'xtick',0:120:720); xlim([0 721]); ylim([0 66]); xlabel('time in seconds')    
+subplot(3,1,3); plot(str.tt,glen(:,3),'LineWidth',1.5);  title('Section III length');set(gca,'FontSize',fontsize,'xtick',0:120:720); xlim([0 721]); ylim([0 66]); xlabel('time in seconds')
 linkaxes
 saveas(gcf,fullfile(save_dir,'body length by section.png'))
 
@@ -296,7 +302,7 @@ lgd=legend('$$\frac{d(Body Length)}{dt}$$','location','best');
 lgd.Interpreter='latex';
 %%%%%%%%%%
 %  annotation('textbox',[0.2,.5,.4,.3],'LineStyle','None','String'...
-% ,{'$$\frac{\mathrm{\mu Ns}}{\mathrm{\mu m}}$$'},'interpreter','latex','fontsize',11','Fontname','times') 
+% ,{'$$\frac{\mathrm{\mu Ns}}{\mathrm{\mu m}}$$'},'interpreter','latex','fontsize',11','Fontname','times')
 %%%%%%%%%%
 
 %% plot head/tail velocity
@@ -345,7 +351,27 @@ ylim([0 150]);  yticklabels([])
 h=title('duration of locomotion phase');
 saveas(gcf,fullfile(save_dir,[h.String,'.png']))
 
+%% show the quotient of Body Length variation divided by Head Velocity
 
+% dhvel = [0;diff(str.ghvel)];
+% ratio = gdfbl ./ dhvel;   % need to re-consider the metrics
+ratio = gdfbl ./ str.ghvel; % gdfbl is gaussian first derivative while ghvel is gaussian head velocity, be careful to use ./ otherwise severe error
+[psor,lsor] = findpeaks(abs(ratio),str.tt);
+indkeep = find(psor > mean(psor)); % only keep index of which is greater than the mean
+indpos = indkeep(ratio(ismember(str.tt,lsor(indkeep)))>0); % index of which the value > 0
+indneg = indkeep(ratio(ismember(str.tt,lsor(indkeep)))<0); % index of which the value < 0
+
+figure; set(gcf,'position',[242 298 1005 400])
+plot(str.tt,ratio,lsor(indpos),psor(indpos),'o','LineWidth',1.5)
+hold all; grid on; xlim([0 760]); ylim([-22 50]); xlabel('time in seconds')
+ylb=ylabel('$$\frac{Body\, Length''}{Head\, Velocity}$$','interpreter','latex');
+ylb.Rotation = 0; ylb.Position = [-75 45 -1];
+plot(str.tt,ratio,lsor(indneg),-psor(indneg),'o','LineWidth',1.5)
+text(lsor(indpos)+2,psor(indpos)+2,num2str(psor(indpos),'%.1f'),'FontSize',12)
+text(lsor(indneg)+2,-(psor(indneg))-2,num2str(psor(indneg),'-%.1f'),'FontSize',12)
+set(gca,'FontSize',14,'xtick',0:120:720)
+
+export_fig(fullfile(save_dir,'quotient.pdf'))
 
 
 
